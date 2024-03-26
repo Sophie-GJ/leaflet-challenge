@@ -1,73 +1,68 @@
-// Create variables
-var legend = L.control({position: "bottomright"});
+// define url
+const url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson"
 
-var url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson"
-
-var myMap = L.map("map", {
-    center: [37.09, -100],
-    zoom: 6
+// create map
+let myMap = L.map("map", {
+    center: [34.05, -118.24],
+    zoom:4
 });
 
-
-// Add tile layer to the map
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-}).addTo(myMap);
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(myMap);
 
-// Retrieve and map the earthquake data
+function chooseColor(depth) {
+    if (depth < 10) return "yellow";
+    else if (depth <30) return "orange";
+    else if (depth < 50) return "pink";
+    else if (depth <70) return "red";
+    else if (depth < 90) return "darkred";
+    else return "purple";
+}
+
+function chooseSize(magnitude) {
+    if (magnitude < 0.5) return 2;
+    else if (magnitude <1.01) return 4;
+    else if (magnitude < 2.51) return 6;
+    else if (magnitude <4.51) return 10;
+    else return 15;
+}
+
 d3.json(url).then(function(data) {
-    function mapStyle(feature) {
-        return {
-            opacity: 1,
-            fillOpacity: 1,
-            fillColor: mapColor(feature.geometry.coordinates[2]),
-            color: "black",
-            radius: mapRadius(feature.properties.mag),
-            stroke: true,
-            weight: 0.5
-        };
+    L.geoJson(data, {
+        pointToLayer: function (feature, latlng) {
+            return L.circleMarker(latlng, {
+                color: "none",
+                fillColor: chooseColor(feature.geometry.coordinates[2]),
+                fillOpacity: 0.5,
+                radius: chooseSize(feature.properties.mag)
+            });
+        },
+
+        onEachFeature: function(feature, layer) {
+            layer.bindPopup("<h3>" + "Magnitude: " + feature.properties.mag + "</h3> <hr> <h4>" + "Depth: " + feature.geometry.coordinates[2] + "</h4> <hr> <body>" + "Lat and Long: " + feature.geometry.coordinates[0] + " , " + feature.geometry.coordinates[1] + "</body>" )
         }
-        // Establish colors for depth
-        function mapColor(depth) {
-            switch(true) {
-                case depth > 90:
-                    return "pink";
-                case depth > 70:
-                    return "orange";
-                case depth > 50:
-                    return "yellow";
-                case depth > 30:
-                    return "green";
-                case depth > 10:
-                    return "blue"
-                case depth = 10:
-                    return "purple";
-                case depth < 10:
-                    return "purple";
-                default:
-                    return "black;"
-            }
-        }
-        // Establidh magnitude size
-        function mapRadius(mag) {
-            if (mag === 0) {
-                return 1;
-            }
 
-            return mag * 4;
-        } 
-        // Add earthquake data to the map
-        L.geoJson(data, {
-            pointToLayer: function(feature, latlng) {
-                return L.circleMarker(latlng);
-            },
-            style: mapStyle,
+    }).addTo(myMap);
+    const legend = L.control({ position: 'bottomright' });
 
-            // Activate pop-up data on click
-            onEachFeature: function(feature, layer) {
-                layer.bindPopup("Magnitude: " + feature.properties.mag + "<br>Location: " + feature.properties.place + "<br>Depth: " + feature.geometry.coordinates[2]);
-            }
-        }).addTo(myMap);
+    legend.onAdd = function () {
+        const div = L.DomUtil.create('div', 'legend');
+        const depths = [-10, 10, 30, 50, 70, 90];
+    
+        for (let i = 0; i < depths.length - 1; i++) {
+            const color = chooseColor(depths[i]);
+            const label = i === 0 ? 'Depth < ' + depths[i + 1] : depths[i] + ' - ' + depths[i + 1];
 
-        //INCOMPLETE but staying that way.
-        // ran out of time.
+            const swatch = L.DomUtil.create('div', 'swatch');
+            swatch.style.backgroundColor = color;
+
+            div.appendChild(swatch);
+            div.innerHTML += label + '<br>';
+    }
+
+        return div;
+};
+
+legend.addTo(myMap);
+});
